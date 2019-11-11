@@ -1,9 +1,11 @@
 package server
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"syscall"
@@ -15,9 +17,12 @@ import (
 	"github.com/bocajspear1/honeypoke-go/internal/recorder"
 )
 
-const maxTCPSize = 8192
+const toFileSize = 4096
 
-func tcpHandler(conn net.Conn, c chan *recorder.HoneypokeRecord) {
+// Max 35k files
+const maxTCPSize = 40 * 1024
+
+func tcpHandler(port int, conn net.Conn, c chan *recorder.HoneypokeRecord) {
 
 	addrSplit := strings.Split(conn.RemoteAddr().String(), ":")
 
@@ -31,46 +36,90 @@ func tcpHandler(conn net.Conn, c chan *recorder.HoneypokeRecord) {
 
 	const chunkSize = 512
 
+	connDied := false
 	finalBuffer := make([]byte, 0)
 
-	for bytesReadTotal := 0; bytesReadTotal <= maxTCPSize; {
+	var outFile *os.File = nil
+	var outPath string = ""
+
+	for bytesReadTotal := 0; bytesReadTotal <= maxTCPSize && !connDied; {
 		smallBuffer := make([]byte, chunkSize)
 
 		bytesRead, err := conn.Read(smallBuffer)
 
 		if bytesRead > 0 {
 			bytesReadTotal += bytesRead
-			fmt.Println("Read Data...")
-			finalBuffer = append(finalBuffer, smallBuffer[0:bytesReadTotal]...)
+			if bytesReadTotal < toFileSize {
+				finalBuffer = append(finalBuffer, smallBuffer[0:bytesRead]...)
+			} else {
+				if outFile == nil {
+					outPath = "./large/tcp-" + strconv.Itoa(port) + "-" + strconv.FormatInt(time.Now().Unix(), 10) + ".large"
+					outFile, err = os.OpenFile(outPath, os.O_RDWR|os.O_CREATE, 0444)
+					if err != nil {
+						log.Printf("Could not open large file: %s\n", err)
+						conn.Close()
+						connDied = true
+					}
+					defer outFile.Close()
+					outFile.Write(finalBuffer)
+				}
+
+				outFile.Write(smallBuffer[0:bytesRead])
+			}
+
 		}
 
 		if err != nil {
-			fmt.Println("Connection error, closing...")
-
-			record := recorder.NewRecord(remoteAddr, (uint16)(remotePort))
-
-			input := strconv.Quote(string(finalBuffer))
-			record.Input = input
-
-			c <- record
-
-			return
+			// Maybe do something if the error is of a certian type?
+			connDied = true
 		}
 	}
 
-	fmt.Println("Max buffer reached")
+	if !connDied {
+		log.Println("Max buffer reached")
+		conn.Close()
+	}
 
-	conn.Close()
+	record := recorder.NewRecord(remoteAddr, (uint16)(remotePort))
+
+	input := strconv.Quote(string(finalBuffer))
+	if outFile == nil {
+		record.Input = input[1 : len(input)-1]
+	} else {
+		record.Input = "Input sent to file " + outPath
+	}
+
+	record.RemoteIP = remoteAddr
+	record.RemotePort = remotePort
+	record.Port = port
+	record.Protocol = "tcp"
+
+	c <- record
 
 }
 
 func runTCPServer(port int, ssl bool, recChan chan *recorder.HoneypokeRecord, contChan chan bool) {
 	log.Printf("Started server for port %d", port)
-	listener, err := net.Listen("tcp", "0.0.0.0:"+strconv.Itoa(port))
-	if err != nil {
-		log.Fatalf("Failed to listen on port %d\n", port)
-		return
+
+	var listener net.Listener
+
+	if !ssl {
+		var err error
+		listener, err = net.Listen("tcp", ":"+strconv.Itoa(port))
+		if err != nil {
+			log.Fatalf("Failed to start TCP server on port %d\n", port)
+			return
+		}
+	} else {
+		certs, err := tls.LoadX509KeyPair("honeypoke_cert.pem", "honeypoke_key.pem")
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		config := &tls.Config{Certificates: []tls.Certificate{certs}}
+		listener, err = tls.Listen("tcp", ":"+strconv.Itoa(port), config)
 	}
+
 	defer listener.Close()
 
 	contChan <- true
@@ -82,13 +131,13 @@ func runTCPServer(port int, ssl bool, recChan chan *recorder.HoneypokeRecord, co
 
 	for {
 		conn, aerr := listener.Accept()
-		fmt.Printf("accept")
+
 		if aerr != nil {
 			fmt.Printf("failed connection")
 			return
 		}
-		//It's common to handle accepted connection on different goroutines
-		go tcpHandler(conn, recChan)
+
+		go tcpHandler(port, conn, recChan)
 	}
 
 }

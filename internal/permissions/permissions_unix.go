@@ -42,6 +42,6 @@ func DropPermissions(newUser string, newGroup string) {
 		if cerr != 0 {
 			log.Fatalln("Unable to set UID due to error:", errno)
 		}
-
+		log.Println("Dropped privileges...")
 	}
 }
