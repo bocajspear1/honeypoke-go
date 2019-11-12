@@ -1,8 +1,11 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 package server
 
 import (
 	"crypto/tls"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -131,7 +134,7 @@ func runTCPServer(port int, ssl bool, recChan chan *recorder.HoneypokeRecord, co
 		conn, aerr := listener.Accept()
 
 		if aerr != nil {
-			fmt.Printf("failed connection")
+			log.Printf("Failed connection")
 			return
 		}
 

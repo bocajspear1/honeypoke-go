@@ -1,0 +1,25 @@
+{
+    "recorders": [
+        {"name": "elasticsearch6", "enabled": false, "config": {
+            "host": "<HOST>:<PORT>",
+            "username": "<USERNAME>",
+            "password": "<PASSWORD>",
+            "verify:": true
+        }}
+    ], 
+    "udp_ports": [
+        80
+    ],
+    "tcp_ports": [
+        {"port": 80, "ssl": false},
+        {"port": 443, "ssl": true},
+        {"port": 23, "ssl": false}
+    ],
+    "ignore_tcp_ports": [
+        9999,
+        9998
+    ],
+    "user": "nobody",
+    "group": "nogroup",
+    "interface": "eth0"
+}

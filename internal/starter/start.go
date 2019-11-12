@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 package starter
 
 import (
@@ -39,12 +43,12 @@ type honeyPokeConfig struct {
 	Interface      string           `json:"interface"`
 }
 
-func waitForSetup(contChan chan bool, serverCount int) {
+func waitForSetup(newUser string, newGroup string, contChan chan bool, serverCount int) {
 	for i := 0; i < serverCount+1; i++ {
 		_ = <-contChan
 	}
 	log.Printf("%d servers and the watcher have reported they are running\n", serverCount)
-	permissions.DropPermissions("nobody", "nogroup")
+	permissions.DropPermissions(newUser, newGroup)
 }
 
 func parseJSON() (*honeyPokeConfig, error) {
@@ -62,6 +66,7 @@ func parseJSON() (*honeyPokeConfig, error) {
 	return &config, nil
 }
 
+// StartHoneyPoke starts HoneyPoke and all the servers and recorders
 func StartHoneyPoke() {
 
 	config, cerr := parseJSON()
@@ -75,17 +80,22 @@ func StartHoneyPoke() {
 	contChan := make(chan bool)
 
 	if len(config.Recorders) == 0 {
-		log.Fatalln("Not recorders configured")
+		log.Fatalln("No recorders in config file")
 	}
 
 	recoderList := make([]recorder.HoneypokeRecorder, 0)
 
 	// Start the recorders routine
 	for _, recorderData := range config.Recorders {
-		if recorderData.RecorderName == "elasticsearch6" {
+		if recorderData.RecorderName == "elasticsearch6" && recorderData.Enabled == true {
 			recoderList = append(recoderList, recorder.NewElastic6Recorder(recorderData.RecorderConfig))
 		}
 	}
+
+	if len(recoderList) == 0 {
+		log.Fatalln("No recorders configured")
+	}
+
 	recorder.StartRecorders(recoderList, recordChan)
 
 	serverCount := 0
@@ -126,7 +136,8 @@ func StartHoneyPoke() {
 	// Start the missed port watching routine
 	watcher.StartWatcher(config.Interface, pcapFilter, contChan)
 
-	waitForSetup(contChan, serverCount)
+	// Wait for everybody to report they are running
+	waitForSetup(config.NewUser, config.NewGroup, contChan, serverCount)
 
 	for {
 		time.Sleep(time.Second * 10)
