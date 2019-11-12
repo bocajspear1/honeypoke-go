@@ -32,15 +32,13 @@ func tcpHandler(port int, conn net.Conn, c chan *recorder.HoneypokeRecord) {
 		remotePort = 0
 	}
 
-	fmt.Printf("Connection from %s:%d\n", remoteAddr, remotePort)
-
 	const chunkSize = 512
 
 	connDied := false
 	finalBuffer := make([]byte, 0)
 
-	var outFile *os.File = nil
-	var outPath string = ""
+	var outFile *os.File
+	var outPath string
 
 	for bytesReadTotal := 0; bytesReadTotal <= maxTCPSize && !connDied; {
 		smallBuffer := make([]byte, chunkSize)
@@ -125,7 +123,7 @@ func runTCPServer(port int, ssl bool, recChan chan *recorder.HoneypokeRecord, co
 	contChan <- true
 
 	for syscall.Getuid() == 0 {
-		log.Printf("Waiting for permissions to drop...")
+		log.Printf("TCP:%d Waiting for permissions to drop...", port)
 		time.Sleep(time.Second * 2)
 	}
 
@@ -142,7 +140,53 @@ func runTCPServer(port int, ssl bool, recChan chan *recorder.HoneypokeRecord, co
 
 }
 
-func runUDPServer(port int) {
+func runUDPServer(port int, recChan chan *recorder.HoneypokeRecord, contChan chan bool) {
+	udpList, err := net.ListenPacket("udp", ":"+strconv.Itoa(port))
+
+	contChan <- true
+
+	for syscall.Getuid() == 0 {
+		log.Printf("UDP:%d Waiting for permissions to drop...", port)
+		time.Sleep(time.Second * 2)
+	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer udpList.Close()
+
+	buffer := make([]byte, 2048)
+
+	for {
+
+		bytesRead, remoteAddrData, err := udpList.ReadFrom(buffer)
+
+		addrSplit := strings.Split(remoteAddrData.String(), ":")
+
+		remoteAddr := addrSplit[0]
+		remotePort, err := (strconv.Atoi(addrSplit[1]))
+		if err != nil {
+			remotePort = 0
+		}
+
+		if err != nil {
+			log.Printf("Error getting packet: %s", err)
+
+		} else if bytesRead > 0 {
+			record := recorder.NewRecord(remoteAddr, (uint16)(remotePort))
+
+			input := strconv.Quote(string(buffer[0:bytesRead]))
+			record.Input = input[1 : len(input)-1]
+			record.RemoteIP = remoteAddr
+			record.RemotePort = remotePort
+			record.Port = port
+			record.Protocol = "udp"
+
+			recChan <- record
+		}
+	}
+
+	//simple read
 
 }
 
@@ -151,6 +195,6 @@ func StartServer(protocol gopacket.LayerType, port int, ssl bool, recChan chan *
 	if protocol == layers.LayerTypeTCP {
 		go runTCPServer(port, ssl, recChan, contChan)
 	} else if protocol == layers.LayerTypeUDP {
-		go runUDPServer(port)
+		go runUDPServer(port, recChan, contChan)
 	}
 }

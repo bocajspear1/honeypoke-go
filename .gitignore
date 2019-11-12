@@ -1,3 +1,6 @@
 honeypoke
 missed.txt
 config.json
+*.pem
+*.mmdb
+large/*

@@ -31,7 +31,7 @@ type tcpConfig struct {
 
 type honeyPokeConfig struct {
 	Recorders      []recorderConfig `json:"recorders"`
-	UDPPorts       []uint16         `json:"udp_ports"`
+	UDPPorts       []int            `json:"udp_ports"`
 	TCPPorts       []tcpConfig      `json:"tcp_ports"`
 	IgnoreTCPPorts []uint16         `json:"ignore_tcp_ports"`
 	NewUser        string           `json:"user"`
@@ -109,6 +109,17 @@ func StartHoneyPoke() {
 			pcapFilter = "not tcp port " + strconv.Itoa((int)(item.Port))
 		}
 		server.StartServer(layers.LayerTypeTCP, (int)(item.Port), item.SSL, recordChan, contChan)
+		serverCount++
+	}
+
+	// Start the UDP servers
+	for _, udpPort := range config.UDPPorts {
+		if pcapFilter != "" {
+			pcapFilter += " and not udp port " + strconv.Itoa((int)(udpPort))
+		} else {
+			pcapFilter = "not udp port " + strconv.Itoa((int)(udpPort))
+		}
+		server.StartServer(layers.LayerTypeUDP, (int)(udpPort), false, recordChan, contChan)
 		serverCount++
 	}
 
