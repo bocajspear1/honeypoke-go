@@ -26,6 +26,7 @@ __A full tutorial on installing HoneyPoke and using it with ElasticSeach and Kib
 * Install the libpcap dev libraries (`libpcap-dev`).
 * Change the port your SSH server is listening on so you can place a HoneyPoke listener there instead.
 * Have Go >=1.13
+* Download the GeoLite IP database from MaxMinds. Requires free account.
 
 ## Installation
 
