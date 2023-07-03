@@ -89,6 +89,12 @@ func StartHoneyPoke() {
 	for _, recorderData := range config.Recorders {
 		if recorderData.RecorderName == "elasticsearch6" && recorderData.Enabled == true {
 			recoderList = append(recoderList, recorder.NewElastic6Recorder(recorderData.RecorderConfig))
+		} else if recorderData.RecorderName == "elasticsearch7" && recorderData.Enabled == true {
+			recoderList = append(recoderList, recorder.NewElastic7Recorder(recorderData.RecorderConfig))
+		} else if recorderData.RecorderName == "elasticsearch8" && recorderData.Enabled == true {
+			recoderList = append(recoderList, recorder.NewElastic8Recorder(recorderData.RecorderConfig))
+		} else {
+			log.Printf("Invalid name %s\n", recorderData.RecorderName)
 		}
 	}
 

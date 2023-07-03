@@ -5,12 +5,6 @@ if [ ! -f config.json ]; then
     exit 1
 fi 
 
-echo "Getting GeoLite Database..."
-wget https://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz --quiet
-tar -zxf GeoLite2-City.tar.gz
-mv GeoLite2-City_*/GeoLite2-City.mmdb ./
-rm GeoLite2-City.tar.gz
-rm -rf GeoLite2-City_*/
 echo ""
 echo "Setting up 'large' directory..."
 if [ -f config.json ]; then

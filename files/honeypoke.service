@@ -1,0 +1,17 @@
+[Unit]
+Description=Honeypoke
+Requires=
+After=network.target 
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+WorkingDirectory=/opt/honeypoke
+ExecStart=/opt/honeypoke/honeypoke
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

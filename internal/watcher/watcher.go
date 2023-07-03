@@ -24,6 +24,10 @@ const portCountLength = 5
 
 func logPacket(protocol gopacket.LayerType, port uint16, outFile *os.File) {
 
+	if port == 0 {
+		return
+	}
+
 	lineLength := (int64)(6 + portCountLength + 1 + portCountLength + 1)
 	offset := (int64)(port-1)*lineLength + 6
 	outFile.Seek(offset, 0)
@@ -39,13 +43,17 @@ func logPacket(protocol gopacket.LayerType, port uint16, outFile *os.File) {
 	}
 	intCount, err := strconv.Atoi(strings.TrimSpace(string(intBuffer)))
 	if err != nil {
-		log.Fatalf("missed.txt is corrupted! Got %s\n", string(intBuffer))
+		log.Printf("missed.txt is corrupted! Got '%s' for port %d\n", string(intBuffer), port)
 		return
 	}
 
 	intCount++
 
 	outFile.Seek(-portCountLength, 1)
+	newNum := fmt.Sprintf("%"+strconv.Itoa(portCountLength)+"d", intCount)
+	if len(newNum) > portCountLength {
+		intCount--
+	}
 	fmt.Fprintf(outFile, "%"+strconv.Itoa(portCountLength)+"d", intCount)
 	outFile.Sync()
 
@@ -75,7 +83,7 @@ func watcherRun(iface string, pcapFilter string, contChan chan bool) {
 		log.Println("Setting up missed.txt")
 		var i int64
 		for i = 0; i < 65535; i++ {
-			fmt.Fprintf(missedFile, "%5d ", i+1)
+			fmt.Fprintf(missedFile, "%5d|", i+1)
 			fmt.Fprintf(missedFile, "%"+strconv.Itoa(portCountLength)+"d", 0)
 			missedFile.WriteString("|")
 			fmt.Fprintf(missedFile, "%"+strconv.Itoa(portCountLength)+"d", 0)

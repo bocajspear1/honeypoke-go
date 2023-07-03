@@ -1,0 +1,36 @@
+{
+  "mappings": {
+    "properties": {
+      "host": {
+        "type": "keyword"
+      },
+      "input": {
+        "type": "text"
+      },
+      "is_binary": {
+        "type": "boolean"
+      },
+      "location": {
+        "type": "geo_point"
+      },
+      "port": {
+        "type": "long"
+      },
+      "protocol": {
+        "type": "keyword"
+      },
+      "remote_ip": {
+        "type": "ip"
+      },
+      "remote_port": {
+        "type": "long"
+      },
+      "time": {
+        "type": "date"
+      },
+      "use_ssl": {
+        "type": "boolean"
+      }
+    }
+  }
+}

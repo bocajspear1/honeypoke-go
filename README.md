@@ -8,6 +8,8 @@ HoneyPoke is a ~~Python~~ Go application that shows you what attackers are pokin
 
 This information can be logged to different places, the currently supported outputs are:
 * ElasticSearch 6
+* ElasticSearch 7
+* ElasticSearch 8
 
 ## What about HoneyPoke Python?
 
